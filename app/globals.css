@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Brand chrome (default = DC Upside navy). Overridden per brand below.
+       Same values as leadership-excellence-assessment for visual consistency
+       across the two internal mrpg tools. */
+    --brand-header: #172554;
+    --brand-header-active: #1e40af;
+    --brand-header-hover: #1e3a8a;
+    --brand-on-header: #ffffff;
+    --brand-accent: #93c5fd;
+    --brand-accent-soft: #dbeafe;
+    --brand-primary: #1d4ed8;
+    /* In-page accents — mirrors leadership-excellence-assessment. */
+    --brand-deep: #1e3a8a;
+    --brand-link: #1d4ed8;
+    --brand-link-hover: #1e3a8a;
+    --brand-panel-bg: #eff6ff;
+    --brand-panel-border: #bfdbfe;
+    --brand-primary-hover: #1e40af;
+
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  /* Values sampled directly from public/mrpg-logo.jpeg, not guessed:
+     red #d81830/#d82030 cluster, background #f4f4f4, wordmark near-black. */
+  html[data-brand='mrpg'] {
+    --brand-header: #f4f4f4;        /* matches the logo file's own background exactly */
+    --brand-header-active: #d81830; /* sampled Mr Price red */
+    --brand-header-hover: #e5e5e5;  /* light grey wash for hover */
+    --brand-on-header: #111111;     /* near-black, close to sampled #040404 */
+    --brand-accent: #52525b;        /* muted dark grey for eyebrow / default nav text on light bg */
+    --brand-accent-soft: #3f3f46;   /* darker grey body copy, readable on light bg */
+    --brand-deep: #111111;
+    --brand-link: #d81830;
+    --brand-link-hover: #b01326;
+    --brand-panel-bg: #fdf2f4;
+    --brand-panel-border: #f4b6bf;
+    --brand-primary: #d81830;
+    --brand-primary-hover: #b01326;
+  }
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent;
+  }
+  .err {
+    @apply text-xs text-red-600 mt-1;
+  }
+  .btn-primary {
+    @apply text-white font-semibold py-2.5 px-5 rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed;
+    background-color: var(--brand-primary);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: var(--brand-primary-hover);
+  }
+  .btn-secondary {
+    @apply bg-white hover:bg-gray-50 text-gray-700 font-semibold py-2.5 px-5 rounded-lg border border-gray-200 transition-colors text-sm;
+  }
+  .nav-link {
+    @apply text-sm font-medium px-3 py-1.5 rounded-md transition-colors;
+    color: var(--brand-accent);
+  }
+  .nav-link:hover {
+    color: var(--brand-on-header);
+    background-color: var(--brand-header-hover);
+  }
+  .nav-link--active,
+  .nav-link--active:hover {
+    color: #fff;
+    background-color: var(--brand-header-active);
+  }
+
+  /* Brand-aware in-page accents (mirrors the WLEA app). */
+  .accent-text {
+    color: var(--brand-link);
+  }
+  a.accent-text:hover,
+  button.accent-text:hover {
+    color: var(--brand-link-hover);
+  }
+  .accent-panel {
+    background-color: var(--brand-panel-bg);
+    border-color: var(--brand-panel-border);
+  }
+  .accent-ring {
+    border-color: var(--brand-primary);
+    box-shadow: 0 0 0 2px var(--brand-panel-border);
+  }
+}

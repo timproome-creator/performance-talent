@@ -8,8 +8,17 @@ import { AuthModal } from './auth/AuthModal'
 import { BRAND } from '@/lib/brand'
 import { BASE_PATH } from '@/lib/site'
 
-const links: { href: string; label: string; match?: string }[] = [
+// Order follows the actual FY cadence (see lib/cadence.ts), not alphabetical
+// or feature-launch order — Assessment and Trackers happen first (April),
+// then 9-Box (July), Scorecard is the ongoing live view, People is the
+// roster admin screen underneath everything else.
+const links: { href: string; label: string; match?: string; external?: boolean }[] = [
   { href: '/', label: 'Year' },
+  // Plain <a>, not next/link — see the external-link comment in the render
+  // below. Escapes this app's basePath to reach the wlea-mrpg deployment
+  // proxied in at /leadership.
+  { href: '/leadership', label: 'Assessment', external: true },
+  { href: '/leadership/console', label: 'My assessments', external: true },
   // match '/tracker' so the singular /tracker/[id] detail page also highlights here
   { href: '/trackers', label: 'Trackers', match: '/tracker' },
   { href: '/ninebox', label: '9-Box' },
@@ -62,26 +71,24 @@ export function PlatformNav() {
           )}
         </Link>
         <nav className="flex items-center gap-1">
-          {links.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={[
-                'nav-link',
-                isActive(link) ? 'nav-link--active' : '',
-              ].join(' ')}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {/* Plain <a>, not next/link: this app has basePath '/performance', so
-              Link would prepend that and keep us inside this app. /leadership
-              is proxied to the wlea-mrpg deployment via next.config.ts
-              rewrites() — the gateway that joins the two tools under one
-              domain — so this needs to escape the basePath the same way. */}
-          <a href="/leadership" className="nav-link">
-            Assessment
-          </a>
+          {links.map((link) =>
+            link.external ? (
+              <a key={link.href} href={link.href} className="nav-link">
+                {link.label}
+              </a>
+            ) : (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={[
+                  'nav-link',
+                  isActive(link) ? 'nav-link--active' : '',
+                ].join(' ')}
+              >
+                {link.label}
+              </Link>
+            ),
+          )}
           <span
             className="w-px h-5 mx-1"
             style={{ backgroundColor: 'var(--brand-header-active)' }}

@@ -3,6 +3,7 @@
 import { requireAllowedUser } from '@/lib/auth'
 import { createServiceClient } from '@/lib/supabase/service'
 import { personSchema, objectiveSchema, objectiveProgressSchema, trackerCommentsSchema } from '@/lib/schema'
+import { vacateRolesForPerson } from '@/app/succession/actions'
 import type { Person, Tracker, Objective, ObjectiveProgress, ObjectiveWithProgress, TrackerView, Quarter } from '@/lib/types'
 
 // perf_people / perf_trackers / perf_objectives / perf_objective_progress all
@@ -137,6 +138,12 @@ export async function archivePerson(id: string): Promise<void> {
     .update({ status: 'archived', updated_at: new Date().toISOString() })
     .eq('id', id)
   if (error) throw error
+
+  // Auto-vacate: an archived person left silently as a role's incumbent
+  // would show a phantom incumbent on the succession map. Runs after the
+  // status update above so the risk recompute inside correctly excludes
+  // this person from any role's viable candidate set too.
+  await vacateRolesForPerson(id)
 }
 
 // ── Trackers (one per person per FY) ────────────────────────────

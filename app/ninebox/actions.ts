@@ -176,6 +176,27 @@ export async function getNineBoxGrid(fyStartYear: number): Promise<NineBoxEntry[
   return entries
 }
 
+// Plain read of the already-cached position row — no recompute. The 9-box
+// page itself owns freshness (getNineBoxGrid recomputes on every load);
+// callers elsewhere (e.g. Succession's evidence panel) just want "what does
+// the 9-box currently say", not to trigger a recompute as a side effect of
+// opening an unrelated page.
+export async function getPersonNineBoxPosition(
+  personId: string,
+  fyStartYear: number,
+): Promise<NineBoxPosition | null> {
+  await requireAllowedUser()
+  const db = createServiceClient()
+  const { data, error } = await db
+    .from('perf_ninebox_positions')
+    .select('*')
+    .eq('person_id', personId)
+    .eq('fy_start_year', fyStartYear)
+    .maybeSingle()
+  if (error) throw error
+  return data ? positionFromRow(data) : null
+}
+
 export async function upsertNineBoxOverride(input: {
   personId: string
   fyStartYear: number

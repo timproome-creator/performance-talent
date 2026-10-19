@@ -14,6 +14,21 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  // basePath means the bare domain root ('/') 404s — Next only serves pages
+  // under '/performance'. People naturally type/bookmark/share the bare
+  // domain, so redirect it to the real app root instead of leaving them on
+  // a dead 404. basePath: false because we're redirecting the literal
+  // top-level '/', not '/performance/' (which Next already serves).
+  async redirects() {
+    return [
+      {
+        source: '/',
+        destination: '/performance',
+        basePath: false,
+        permanent: true,
+      },
+    ]
+  },
   // This app is the gateway for the unified Mr Price "People Portal" URL:
   // WLEA (a separate Vercel deployment, wlea-mrpg) is proxied in here under
   // /leadership so both tools live under one domain without merging

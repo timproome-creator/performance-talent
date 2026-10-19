@@ -22,6 +22,7 @@ const links: { href: string; label: string; match?: string; external?: boolean }
   // match '/tracker' so the singular /tracker/[id] detail page also highlights here
   { href: '/trackers', label: 'Trackers', match: '/tracker' },
   { href: '/ninebox', label: '9-Box' },
+  { href: '/succession', label: 'Succession' },
   { href: '/scorecard', label: 'Scorecard' },
   { href: '/people', label: 'People' },
 ]

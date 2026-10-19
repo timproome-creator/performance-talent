@@ -1,7 +1,7 @@
 // Redefined locally rather than imported from leadership-excellence-assessment's
 // lib/framework/types.ts — separate Next.js deployments, no shared package.
 // Kept in sync by convention, not by import.
-export type RoleLevelKey = 'jpm' | 'pm' | 'dcm' | 'exec'
+export type RoleLevelKey = 'jpm' | 'pm' | 'dcm' | 'exec' | 'fm'
 
 export type EntityStatus = 'active' | 'archived'
 
@@ -212,3 +212,48 @@ export interface NineBoxEntry {
   assessmentDate: string | null // latest completed WLEA assessment used for potential
   performanceQuarter: Quarter | null // which quarter's progress fed performance
 }
+
+// ── Succession Planning ───────────────────────────────────────────
+// A Role is a first-class entity independent of perf_people — it can exist
+// vacant, and carries its own criticality metadata. perf_people's own
+// roleTitle/roleLevel are untouched; this is additive, not a replacement.
+
+export type SuccessionReadiness = 'ready_now' | 'ready_12mo' | 'ready_1_2yr' | 'ready_2_3yr' | 'not_ready'
+export type SuccessionRisk = 'high' | 'medium' | 'low'
+
+export interface Role {
+  id: string
+  title: string
+  roleLevel: RoleLevelKey | null
+  division: string | null
+  team: string | null
+  incumbentId: string | null
+  isCritical: boolean
+  criticalityReason: string | null
+  riskComputed: SuccessionRisk | null
+  riskOverride: SuccessionRisk | null
+  riskNote: string | null
+  notes: string | null
+  status: EntityStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SuccessionCandidate {
+  id: string
+  roleId: string
+  personId: string
+  readiness: SuccessionReadiness
+  priorityRank: number
+  expectedReadinessDate: string | null
+  commentary: string | null
+  addedAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+// Composite "view" types that join a Role/Candidate with evidence from other
+// modules (scorecard, IDP, 9-box) live in app/succession/actions.ts, the
+// same way PersonScorecardSummary lives in app/scorecard/actions.ts and
+// PersonIdpView lives in app/idp/actions.ts — not here, to avoid this
+// shared, client-importable file depending on server-action-only modules.

@@ -7,6 +7,7 @@ const ROLE_LEVEL_LABEL: Record<string, string> = {
   jpm: 'JPM',
   pm: 'PM',
   dcm: 'DC Manager',
+  fm: 'Facilities Mgr',
   exec: 'Executive',
 }
 

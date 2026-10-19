@@ -30,7 +30,7 @@ create table public.perf_people (
   name         text not null,
   email        text,
   role_title   text,
-  role_level   text check (role_level in ('jpm', 'pm', 'dcm', 'exec')),
+  role_level   text check (role_level in ('jpm', 'pm', 'dcm', 'exec', 'fm')),
   team         text,
   manager_id   uuid references public.perf_people(id) on delete set null,
   status       text not null default 'active' check (status in ('active', 'archived')),
@@ -399,3 +399,142 @@ alter table public.perf_development_actions
 -- typed in by a person; this one-off backfill corrects the existing rows.)
 update public.perf_development_actions set source = 'suggested'
   where created_at < now();
+
+
+-- ============================================================
+-- MIGRATION 007 — Succession Planning (2026-08-25).
+--
+-- Core relationship: Critical Role -> Current Incumbent -> Potential
+-- Successor(s) -> Readiness -> Evidence -> Development Gaps -> Development
+-- Plan -> Succession Risk.
+--
+-- perf_roles is the first-class Role/Position entity this app has never
+-- had. perf_people.role_title/role_level stay exactly as they are (a
+-- person's own HR attribute) — this is additive, not a replacement. A role
+-- must be able to exist VACANT (incumbent_id null) and carry criticality
+-- metadata independent of whoever currently holds it, which perf_people
+-- structurally cannot do (it has no notion of a position outliving its
+-- holder). role_level here is an optional convenience attribute for
+-- display/comparison against candidates, NOT a repurposing of
+-- perf_people.role_level and NOT a foreign key to it.
+--
+-- risk_computed/risk_override/risk_note follow the exact perf_ninebox_
+-- positions pattern (migration 003): a rule-based computed value, cached,
+-- with an optional manual override; effective value = override ?? computed.
+-- Unlike 9-box, risk is recomputed on WRITE (whenever a candidate is
+-- added/changed/removed, or a person is archived — see
+-- app/succession/actions.ts recomputeRoleRisk), not on every read — its
+-- only inputs (this table's own candidate rows) are owned entirely by this
+-- feature's own write path, unlike 9-box's inputs which change out from
+-- under it via WLEA/Connect 2.0. Recomputing on read would be pure
+-- redundant work here.
+--
+-- Readiness (perf_succession_candidates.readiness) is a direct manager/HR
+-- judgement call, not derived from any evidence source — there is no
+-- computed counterpart to override, unlike potential/performance/risk.
+--
+-- No FK to wlea_assessments, matching the deliberate non-FK convention
+-- already established by perf_development_plans.source_assessment_id
+-- (migration 005) — cross-app-owned table, referencing it would couple
+-- migration order across apps.
+-- ============================================================
+
+create table public.perf_roles (
+  id                  uuid default gen_random_uuid() primary key,
+  title               text not null,
+  role_level          text check (role_level in ('jpm', 'pm', 'dcm', 'exec', 'fm')),
+  division            text,
+  team                text,
+  incumbent_id        uuid references public.perf_people(id) on delete set null,
+  is_critical         boolean not null default false,
+  criticality_reason  text,
+  risk_computed       text check (risk_computed in ('high', 'medium', 'low')),
+  risk_override       text check (risk_override in ('high', 'medium', 'low')),
+  risk_note           text,
+  notes               text,
+  status              text not null default 'active' check (status in ('active', 'archived')),
+  created_at          timestamptz not null default now(),
+  updated_at          timestamptz not null default now()
+);
+
+create index perf_roles_incumbent_idx on public.perf_roles(incumbent_id);
+create index perf_roles_status_idx on public.perf_roles(status);
+create index perf_roles_critical_idx on public.perf_roles(is_critical) where is_critical;
+
+-- Same RLS posture as every other perf_* table: enabled, no client
+-- policies, all access via app/succession/actions.ts's service-role client.
+alter table public.perf_roles enable row level security;
+
+
+-- One row per (role, candidate) pair — the many-to-many: one role can have
+-- several successors, one person can be a successor for several roles.
+-- added_at is deliberately kept (not just created_at) because "date added"
+-- is a named field in the successor profile spec, distinct from row
+-- creation bookkeeping if this row is ever re-created after removal.
+create table public.perf_succession_candidates (
+  id                       uuid default gen_random_uuid() primary key,
+  role_id                  uuid not null references public.perf_roles(id) on delete cascade,
+  person_id                uuid not null references public.perf_people(id) on delete cascade,
+  readiness                text not null default 'not_ready' check (
+                              readiness in ('ready_now', 'ready_12mo', 'ready_1_2yr', 'ready_2_3yr', 'not_ready')
+                            ),
+  priority_rank            integer not null default 1,
+  expected_readiness_date  date,
+  commentary               text,
+  added_at                 timestamptz not null default now(),
+  created_at               timestamptz not null default now(),
+  updated_at               timestamptz not null default now(),
+  unique (role_id, person_id)
+);
+
+create index perf_succession_candidates_role_idx on public.perf_succession_candidates(role_id);
+create index perf_succession_candidates_person_idx on public.perf_succession_candidates(person_id);
+
+alter table public.perf_succession_candidates enable row level security;
+
+
+-- ============================================================
+-- MIGRATION 008 — Facilities & Maintenance role level (2026-10-19). Run
+-- this once on any deployment that already created perf_people/perf_roles
+-- from an earlier version of this file. Safe to re-run.
+--
+-- Adds 'fm' (Facilities & Maintenance Manager) alongside WLEA's four
+-- existing role levels — a genuine fifth tier with its own competency
+-- anchors in leadership-excellence-assessment (same rank/seniority as
+-- 'dcm', a parallel function rather than a rung above it), not a reuse
+-- of an existing tier's bar.
+--
+-- Looks up each check constraint's real name via pg_constraint rather than
+-- assuming Postgres's default naming (<table>_<column>_check) — guessing
+-- wrong would silently leave the old, more restrictive constraint active
+-- alongside a dead new one, since Postgres enforces every check constraint
+-- on a column, not just the most recent.
+-- ============================================================
+do $$
+declare
+  cname text;
+begin
+  select conname into cname
+  from pg_constraint
+  where conrelid = 'public.perf_people'::regclass
+    and contype = 'c'
+    and pg_get_constraintdef(oid) like '%role_level%';
+  if cname is not null then
+    execute format('alter table public.perf_people drop constraint %I', cname);
+  end if;
+  alter table public.perf_people
+    add constraint perf_people_role_level_check
+    check (role_level in ('jpm', 'pm', 'dcm', 'exec', 'fm'));
+
+  select conname into cname
+  from pg_constraint
+  where conrelid = 'public.perf_roles'::regclass
+    and contype = 'c'
+    and pg_get_constraintdef(oid) like '%role_level%';
+  if cname is not null then
+    execute format('alter table public.perf_roles drop constraint %I', cname);
+  end if;
+  alter table public.perf_roles
+    add constraint perf_roles_role_level_check
+    check (role_level in ('jpm', 'pm', 'dcm', 'exec', 'fm'));
+end $$;

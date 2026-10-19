@@ -7,6 +7,7 @@ const ROLE_LEVEL_OPTIONS: { key: RoleLevelKey; label: string }[] = [
   { key: 'jpm', label: 'Junior Production Manager' },
   { key: 'pm', label: 'Production Manager' },
   { key: 'dcm', label: 'DC Manager' },
+  { key: 'fm', label: 'Facilities & Maintenance Manager' },
   { key: 'exec', label: 'Executive' },
 ]
 

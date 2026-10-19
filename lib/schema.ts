@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const roleLevelSchema = z.enum(['jpm', 'pm', 'dcm', 'exec'])
+export const roleLevelSchema = z.enum(['jpm', 'pm', 'dcm', 'exec', 'fm'])
 
 export const personSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
@@ -54,3 +54,51 @@ export const trackerCommentsSchema = z.object({
 })
 
 export type TrackerCommentsInput = z.infer<typeof trackerCommentsSchema>
+
+// ── Succession Planning ───────────────────────────────────────────
+
+export const roleSchema = z
+  .object({
+    title: z.string().trim().min(1, 'Title is required'),
+    roleLevel: roleLevelSchema.nullable().or(z.literal('')).transform((v) => (v ? v : null)),
+    division: z.string().trim().nullable().or(z.literal('')).transform((v) => v || null),
+    team: z.string().trim().nullable().or(z.literal('')).transform((v) => v || null),
+    incumbentId: z.string().uuid().nullable().or(z.literal('')).transform((v) => v || null),
+    isCritical: z.boolean(),
+    criticalityReason: z.string().trim().nullable().or(z.literal('')).transform((v) => v || null),
+    notes: z.string().trim().nullable().or(z.literal('')).transform((v) => v || null),
+  })
+  // A role flagged critical without a reason is exactly the kind of
+  // unexplained judgement call the whole feature exists to avoid.
+  .refine((v) => !v.isCritical || !!v.criticalityReason, {
+    message: 'Explain why this role is critical.',
+    path: ['criticalityReason'],
+  })
+
+export type RoleInput = z.infer<typeof roleSchema>
+
+export const successionReadinessSchema = z.enum([
+  'ready_now',
+  'ready_12mo',
+  'ready_1_2yr',
+  'ready_2_3yr',
+  'not_ready',
+])
+
+export const successionCandidateSchema = z.object({
+  roleId: z.string().uuid(),
+  personId: z.string().uuid(),
+  readiness: successionReadinessSchema,
+  priorityRank: z.coerce.number().int().min(1),
+  expectedReadinessDate: z.string().nullable().or(z.literal('')).transform((v) => v || null),
+  commentary: z.string().trim().nullable().or(z.literal('')).transform((v) => v || null),
+})
+
+export type SuccessionCandidateInput = z.infer<typeof successionCandidateSchema>
+
+export const riskOverrideSchema = z.object({
+  riskOverride: z.enum(['high', 'medium', 'low']).nullable().or(z.literal('')).transform((v) => (v ? v : null)),
+  riskNote: z.string().trim().nullable().or(z.literal('')).transform((v) => v || null),
+})
+
+export type RiskOverrideInput = z.infer<typeof riskOverrideSchema>
